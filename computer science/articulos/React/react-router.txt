@@ -1,0 +1,771 @@
+nesting
+
+import React from "react";
+import {
+  BrowserRouter as Router,
+  Switch,
+  Route,
+  Link,
+  useParams,
+  useRouteMatch
+} from "react-router-dom";
+
+// Since routes are regular React components, they
+// may be rendered anywhere in the app, including in
+// child elements.
+//
+// This helps when it's time to code-split your app
+// into multiple bundles because code-splitting a
+// React Router app is the same as code-splitting
+// any other React app.
+
+export default function NestingExample() {
+  return (
+    <Router>
+      <div>
+        <ul>
+          <li>
+            <Link to="/">Home</Link>
+          </li>
+          <li>
+            <Link to="/topics">Topics</Link>
+          </li>
+        </ul>
+
+        <hr />
+
+        <Switch>
+          <Route exact path="/">
+            <Home />
+          </Route>
+          <Route path="/topics">
+            <Topics />
+          </Route>
+        </Switch>
+      </div>
+    </Router>
+  );
+}
+
+function Home() {
+  return (
+    <div>
+      <h2>Home</h2>
+    </div>
+  );
+}
+
+function Topics() {
+  // The `path` lets us build <Route> paths that are
+  // relative to the parent route, while the `url` lets
+  // us build relative links.
+  let { path, url } = useRouteMatch();
+
+  return (
+    <div>
+      <h2>Topics</h2>
+      <ul>
+        <li>
+          <Link to={`${url}/rendering`}>Rendering with React</Link>
+        </li>
+        <li>
+          <Link to={`${url}/components`}>Components</Link>
+        </li>
+        <li>
+          <Link to={`${url}/props-v-state`}>Props v. State</Link>
+        </li>
+      </ul>
+
+      <Switch>
+        <Route exact path={path}>
+          <h3>Please select a topic.</h3>
+        </Route>
+        <Route path={`${path}/:topicId`}>
+          <Topic />
+        </Route>
+      </Switch>
+    </div>
+  );
+}
+
+function Topic() {
+  // The <Route> that rendered this component has a
+  // path of `/topics/:topicId`. The `:topicId` portion
+  // of the URL indicates a placeholder that we can
+  // get from `useParams()`.
+  let { topicId } = useParams();
+
+  return (
+    <div>
+      <h3>{topicId}</h3>
+    </div>
+  );
+}
+
+url parameters
+
+import React from "react";
+import {
+  BrowserRouter as Router,
+  Switch,
+  Route,
+  Link,
+  useParams
+} from "react-router-dom";
+
+// Params are placeholders in the URL that begin
+// with a colon, like the `:id` param defined in
+// the route in this example. A similar convention
+// is used for matching dynamic segments in other
+// popular web frameworks like Rails and Express.
+
+export default function ParamsExample() {
+  return (
+    <Router>
+      <div>
+        <h2>Accounts</h2>
+
+        <ul>
+          <li>
+            <Link to="/netflix">Netflix</Link>
+          </li>
+          <li>
+            <Link to="/zillow-group">Zillow Group</Link>
+          </li>
+          <li>
+            <Link to="/yahoo">Yahoo</Link>
+          </li>
+          <li>
+            <Link to="/modus-create">Modus Create</Link>
+          </li>
+        </ul>
+
+        <Switch>
+          <Route path="/:id" children={<Child />} />
+        </Switch>
+      </div>
+    </Router>
+  );
+}
+
+function Child() {
+  // We can use the `useParams` hook here to access
+  // the dynamic pieces of the URL.
+  let { id } = useParams();
+
+  return (
+    <div>
+      <h3>ID: {id}</h3>
+    </div>
+  );
+}
+
+
+Auth
+
+import React, { useContext, createContext, useState } from "react";
+import {
+  BrowserRouter as Router,
+  Switch,
+  Route,
+  Link,
+  Redirect,
+  useHistory,
+  useLocation
+} from "react-router-dom";
+
+// This example has 3 pages: a public page, a protected
+// page, and a login screen. In order to see the protected
+// page, you must first login. Pretty standard stuff.
+//
+// First, visit the public page. Then, visit the protected
+// page. You're not yet logged in, so you are redirected
+// to the login page. After you login, you are redirected
+// back to the protected page.
+//
+// Notice the URL change each time. If you click the back
+// button at this point, would you expect to go back to the
+// login page? No! You're already logged in. Try it out,
+// and you'll see you go back to the page you visited
+// just *before* logging in, the public page.
+
+export default function AuthExample() {
+  return (
+    <ProvideAuth>
+      <Router>
+        <div>
+          <AuthButton />
+
+          <ul>
+            <li>
+              <Link to="/public">Public Page</Link>
+            </li>
+            <li>
+              <Link to="/protected">Protected Page</Link>
+            </li>
+          </ul>
+
+          <Switch>
+            <Route path="/public">
+              <PublicPage />
+            </Route>
+            <Route path="/login">
+              <LoginPage />
+            </Route>
+            <PrivateRoute path="/protected">
+              <ProtectedPage />
+            </PrivateRoute>
+          </Switch>
+        </div>
+      </Router>
+    </ProvideAuth>
+  );
+}
+
+const fakeAuth = {
+  isAuthenticated: false,
+  signin(cb) {
+    fakeAuth.isAuthenticated = true;
+    setTimeout(cb, 100); // fake async
+  },
+  signout(cb) {
+    fakeAuth.isAuthenticated = false;
+    setTimeout(cb, 100);
+  }
+};
+
+/** For more details on
+ * `authContext`, `ProvideAuth`, `useAuth` and `useProvideAuth`
+ * refer to: https://usehooks.com/useAuth/
+ */
+const authContext = createContext();
+
+function ProvideAuth({ children }) {
+  const auth = useProvideAuth();
+  return (
+    <authContext.Provider value={auth}>
+      {children}
+    </authContext.Provider>
+  );
+}
+
+function useAuth() {
+  return useContext(authContext);
+}
+
+function useProvideAuth() {
+  const [user, setUser] = useState(null);
+
+  const signin = cb => {
+    return fakeAuth.signin(() => {
+      setUser("user");
+      cb();
+    });
+  };
+
+  const signout = cb => {
+    return fakeAuth.signout(() => {
+      setUser(null);
+      cb();
+    });
+  };
+
+  return {
+    user,
+    signin,
+    signout
+  };
+}
+
+function AuthButton() {
+  let history = useHistory();
+  let auth = useAuth();
+
+  return auth.user ? (
+    <p>
+      Welcome!{" "}
+      <button
+        onClick={() => {
+          auth.signout(() => history.push("/"));
+        }}
+      >
+        Sign out
+      </button>
+    </p>
+  ) : (
+    <p>You are not logged in.</p>
+  );
+}
+
+// A wrapper for <Route> that redirects to the login
+// screen if you're not yet authenticated.
+function PrivateRoute({ children, ...rest }) {
+  let auth = useAuth();
+  return (
+    <Route
+      {...rest}
+      render={({ location }) =>
+        auth.user ? (
+          children
+        ) : (
+          <Redirect
+            to={{
+              pathname: "/login",
+              state: { from: location }
+            }}
+          />
+        )
+      }
+    />
+  );
+}
+
+function PublicPage() {
+  return <h3>Public</h3>;
+}
+
+function ProtectedPage() {
+  return <h3>Protected</h3>;
+}
+
+function LoginPage() {
+  let history = useHistory();
+  let location = useLocation();
+  let auth = useAuth();
+
+  let { from } = location.state || { from: { pathname: "/" } };
+  let login = () => {
+    auth.signin(() => {
+      history.replace(from);
+    });
+  };
+
+  return (
+    <div>
+      <p>You must log in to view the page at {from.pathname}</p>
+      <button onClick={login}>Log in</button>
+    </div>
+  );
+}
+
+
+Preventing Transition
+
+import React, { useState } from "react";
+import {
+  BrowserRouter as Router,
+  Switch,
+  Route,
+  Link,
+  Prompt
+} from "react-router-dom";
+
+// Sometimes you want to prevent the user from
+// navigating away from a page. The most common
+// use case is when they have entered some data
+// into a form but haven't submitted it yet, and
+// you don't want them to lose it.
+
+export default function PreventingTransitionsExample() {
+  return (
+    <Router>
+      <ul>
+        <li>
+          <Link to="/">Form</Link>
+        </li>
+        <li>
+          <Link to="/one">One</Link>
+        </li>
+        <li>
+          <Link to="/two">Two</Link>
+        </li>
+      </ul>
+
+      <Switch>
+        <Route path="/" exact children={<BlockingForm />} />
+        <Route path="/one" children={<h3>One</h3>} />
+        <Route path="/two" children={<h3>Two</h3>} />
+      </Switch>
+    </Router>
+  );
+}
+
+function BlockingForm() {
+  let [isBlocking, setIsBlocking] = useState(false);
+
+  return (
+    <form
+      onSubmit={event => {
+        event.preventDefault();
+        event.target.reset();
+        setIsBlocking(false);
+      }}
+    >
+      <Prompt
+        when={isBlocking}
+        message={location =>
+          `Are you sure you want to go to ${location.pathname}`
+        }
+      />
+
+      <p>
+        Blocking?{" "}
+        {isBlocking ? "Yes, click a link or the back button" : "Nope"}
+      </p>
+
+      <p>
+        <input
+          size="50"
+          placeholder="type something to block transitions"
+          onChange={event => {
+            setIsBlocking(event.target.value.length > 0);
+          }}
+        />
+      </p>
+
+      <p>
+        <button>Submit to stop blocking</button>
+      </p>
+    </form>
+  );
+}
+
+
+recursive path
+
+import React from "react";
+import {
+  BrowserRouter as Router,
+  Switch,
+  Route,
+  Link,
+  Redirect,
+  useParams,
+  useRouteMatch
+} from "react-router-dom";
+
+// Sometimes you don't know all the possible routes
+// for your application up front; for example, when
+// building a file-system browsing UI or determining
+// URLs dynamically based on data. In these situations,
+// it helps to have a dynamic router that is able
+// to generate routes as needed at runtime.
+//
+// This example lets you drill down into a friends
+// list recursively, viewing each user's friend list
+// along the way. As you drill down, notice each segment
+// being added to the URL. You can copy/paste this link
+// to someone else and they will see the same UI.
+//
+// Then click the back button and watch the last
+// segment of the URL disappear along with the last
+// friend list.
+
+export default function RecursiveExample() {
+  return (
+    <Router>
+      <Switch>
+        <Route path="/:id">
+          <Person />
+        </Route>
+        <Route path="/">
+          <Redirect to="/0" />
+        </Route>
+      </Switch>
+    </Router>
+  );
+}
+
+function Person() {
+  let { url } = useRouteMatch();
+  let { id } = useParams();
+  let person = find(parseInt(id));
+
+  return (
+    <div>
+      <h3>{person.name}’s Friends</h3>
+
+      <ul>
+        {person.friends.map(id => (
+          <li key={id}>
+            <Link to={`${url}/${id}`}>{find(id).name}</Link>
+          </li>
+        ))}
+      </ul>
+
+      <Switch>
+        <Route path={`${url}/:id`}>
+          <Person />
+        </Route>
+      </Switch>
+    </div>
+  );
+}
+
+const PEEPS = [
+  { id: 0, name: "Michelle", friends: [1, 2, 3] },
+  { id: 1, name: "Sean", friends: [0, 3] },
+  { id: 2, name: "Kim", friends: [0, 1, 3] },
+  { id: 3, name: "David", friends: [1, 2] }
+];
+
+function find(id) {
+  return PEEPS.find(p => p.id === id);
+}
+
+sidebar
+
+import React from "react";
+import {
+  BrowserRouter as Router,
+  Switch,
+  Route,
+  Link
+} from "react-router-dom";
+
+// Each logical "route" has two components, one for
+// the sidebar and one for the main area. We want to
+// render both of them in different places when the
+// path matches the current URL.
+
+// We are going to use this route config in 2
+// spots: once for the sidebar and once in the main
+// content section. All routes are in the same
+// order they would appear in a <Switch>.
+const routes = [
+  {
+    path: "/",
+    exact: true,
+    sidebar: () => <div>home!</div>,
+    main: () => <h2>Home</h2>
+  },
+  {
+    path: "/bubblegum",
+    sidebar: () => <div>bubblegum!</div>,
+    main: () => <h2>Bubblegum</h2>
+  },
+  {
+    path: "/shoelaces",
+    sidebar: () => <div>shoelaces!</div>,
+    main: () => <h2>Shoelaces</h2>
+  }
+];
+
+export default function SidebarExample() {
+  return (
+    <Router>
+      <div style={{ display: "flex" }}>
+        <div
+          style={{
+            padding: "10px",
+            width: "40%",
+            background: "#f0f0f0"
+          }}
+        >
+          <ul style={{ listStyleType: "none", padding: 0 }}>
+            <li>
+              <Link to="/">Home</Link>
+            </li>
+            <li>
+              <Link to="/bubblegum">Bubblegum</Link>
+            </li>
+            <li>
+              <Link to="/shoelaces">Shoelaces</Link>
+            </li>
+          </ul>
+
+          <Switch>
+            {routes.map((route, index) => (
+              // You can render a <Route> in as many places
+              // as you want in your app. It will render along
+              // with any other <Route>s that also match the URL.
+              // So, a sidebar or breadcrumbs or anything else
+              // that requires you to render multiple things
+              // in multiple places at the same URL is nothing
+              // more than multiple <Route>s.
+              <Route
+                key={index}
+                path={route.path}
+                exact={route.exact}
+                children={<route.sidebar />}
+              />
+            ))}
+          </Switch>
+        </div>
+
+        <div style={{ flex: 1, padding: "10px" }}>
+          <Switch>
+            {routes.map((route, index) => (
+              // Render more <Route>s with the same paths as
+              // above, but different components this time.
+              <Route
+                key={index}
+                path={route.path}
+                exact={route.exact}
+                children={<route.main />}
+              />
+            ))}
+          </Switch>
+        </div>
+      </div>
+    </Router>
+  );
+}
+
+animated transition
+
+import "./packages/react-router-dom/examples/Animation/styles.css";
+
+import React from "react";
+import {
+  TransitionGroup,
+  CSSTransition
+} from "react-transition-group";
+import {
+  BrowserRouter as Router,
+  Switch,
+  Route,
+  Link,
+  Redirect,
+  useLocation,
+  useParams
+} from "react-router-dom";
+
+export default function AnimationExample() {
+  return (
+    <Router>
+      <Switch>
+        <Route exact path="/">
+          <Redirect to="/hsl/10/90/50" />
+        </Route>
+        <Route path="*">
+          <AnimationApp />
+        </Route>
+      </Switch>
+    </Router>
+  );
+}
+
+function AnimationApp() {
+  let location = useLocation();
+
+  return (
+    <div style={styles.fill}>
+      <ul style={styles.nav}>
+        <NavLink to="/hsl/10/90/50">Red</NavLink>
+        <NavLink to="/hsl/120/100/40">Green</NavLink>
+        <NavLink to="/rgb/33/150/243">Blue</NavLink>
+        <NavLink to="/rgb/240/98/146">Pink</NavLink>
+      </ul>
+
+      <div style={styles.content}>
+        <TransitionGroup>
+          {/*
+            This is no different than other usage of
+            <CSSTransition>, just make sure to pass
+            `location` to `Switch` so it can match
+            the old location as it animates out.
+          */}
+          <CSSTransition
+            key={location.key}
+            classNames="fade"
+            timeout={300}
+          >
+            <Switch location={location}>
+              <Route path="/hsl/:h/:s/:l" children={<HSL />} />
+              <Route path="/rgb/:r/:g/:b" children={<RGB />} />
+            </Switch>
+          </CSSTransition>
+        </TransitionGroup>
+      </div>
+    </div>
+  );
+}
+
+function NavLink(props) {
+  return (
+    <li style={styles.navItem}>
+      <Link {...props} style={{ color: "inherit" }} />
+    </li>
+  );
+}
+
+function HSL() {
+  let { h, s, l } = useParams();
+
+  return (
+    <div
+      style={{
+        ...styles.fill,
+        ...styles.hsl,
+        background: `hsl(${h}, ${s}%, ${l}%)`
+      }}
+    >
+      hsl({h}, {s}%, {l}%)
+    </div>
+  );
+}
+
+function RGB() {
+  let { r, g, b } = useParams();
+
+  return (
+    <div
+      style={{
+        ...styles.fill,
+        ...styles.rgb,
+        background: `rgb(${r}, ${g}, ${b})`
+      }}
+    >
+      rgb({r}, {g}, {b})
+    </div>
+  );
+}
+
+const styles = {};
+
+styles.fill = {
+  position: "absolute",
+  left: 0,
+  right: 0,
+  top: 0,
+  bottom: 0
+};
+
+styles.content = {
+  ...styles.fill,
+  top: "40px",
+  textAlign: "center"
+};
+
+styles.nav = {
+  padding: 0,
+  margin: 0,
+  position: "absolute",
+  top: 0,
+  height: "40px",
+  width: "100%",
+  display: "flex"
+};
+
+styles.navItem = {
+  textAlign: "center",
+  flex: 1,
+  listStyleType: "none",
+  padding: "10px"
+};
+
+styles.hsl = {
+  ...styles.fill,
+  color: "white",
+  paddingTop: "20px",
+  fontSize: "30px"
+};
+
+styles.rgb = {
+  ...styles.fill,
+  color: "white",
+  paddingTop: "20px",
+  fontSize: "30px"
+};
+
